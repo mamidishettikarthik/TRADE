@@ -105,3 +105,58 @@ ________________________________________________________________
                  | - SellAsset()          |
                  | - FindAssetInMarket()  |
                  |_______________________|
+class Program
+{
+    static void Main()
+    {
+        // Create an instance of the trade processing factory
+        ITradeProcessingFactory factory = new TradeProcessingFactory();
+
+        // Parallel initiation of two trades
+        Task<ITrade> trade1Task = Task.Run(() =>
+        {
+            IFrontOffice frontOffice = factory.CreateFrontOffice();
+            return frontOffice.InitiateTrade("AAPL", 100); // Buying 100 shares of AAPL
+        });
+
+        Task<ITrade> trade2Task = Task.Run(() =>
+        {
+            IFrontOffice frontOffice = factory.CreateFrontOffice();
+            return frontOffice.InitiateTrade("GOOGL", 50); // Buying 50 shares of GOOGL
+        });
+
+        // Middle and Back office processing (concurrent)
+        Task middleAndBackOfficeTasks = Task.WhenAll(
+            trade1Task.ContinueWith(previousTask =>
+            {
+                IMiddleOffice middleOffice = factory.CreateMiddleOffice();
+                middleOffice.ValidateTrade(previousTask.Result);
+
+                IBackOffice backOffice = factory.CreateBackOffice();
+                backOffice.RecordTrade(previousTask.Result);
+                backOffice.ConfirmTrade(previousTask.Result);
+            }),
+            trade2Task.ContinueWith(previousTask =>
+            {
+                IMiddleOffice middleOffice = factory.CreateMiddleOffice();
+                middleOffice.ValidateTrade(previousTask.Result);
+
+                IBackOffice backOffice = factory.CreateBackOffice();
+                backOffice.RecordTrade(previousTask.Result);
+                backOffice.ConfirmTrade(previousTask.Result);
+            })
+        );
+
+        // Execute trades after all processing
+        Task executeTradesTask = middleAndBackOfficeTasks.ContinueWith(previousTask =>
+        {
+            trade1Task.Result.ExecuteTrade();
+            trade2Task.Result.ExecuteTrade();
+        });
+
+        // Wait for all tasks to complete
+        Task.WaitAll(trade1Task, trade2Task, executeTradesTask);
+
+        Console.ReadLine();
+    }
+}
