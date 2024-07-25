@@ -38,3 +38,120 @@ namespace ConsoleApp1system
         }
     }
 }
+using System;
+using System.Data;
+using System.Data.OracleClient;
+
+public class OracleDataAccess : IDataAccess
+{
+    private string _connectionString;
+
+    public OracleDataAccess(string connectionString)
+    {
+        _connectionString = connectionString;
+    }
+
+    public void SaveTradeDetails(string tradeDetails)
+    {
+        using (OracleConnection connection = new OracleConnection(_connectionString))
+        {
+            string sql = "INSERT INTO TradeDetails (Details) VALUES (:details)";
+
+            using (OracleCommand command = new OracleCommand(sql, connection))
+            {
+                command.Parameters.Add(":details", OracleType.VarChar).Value = tradeDetails;
+
+                try
+                {
+                    connection.Open();
+                    command.ExecuteNonQuery();
+                    Console.WriteLine("Trade details saved to Oracle database.");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Error saving trade details: " + ex.Message);
+                }
+            }
+        }
+    }
+
+    public string GetTradeDetails(int tradeId)
+    {
+        string details = null;
+
+        using (OracleConnection connection = new OracleConnection(_connectionString))
+        {
+            string sql = "SELECT Details FROM TradeDetails WHERE TradeId = :tradeId";
+
+            using (OracleCommand command = new OracleCommand(sql, connection))
+            {
+                command.Parameters.Add(":tradeId", OracleType.Int32).Value = tradeId;
+
+                try
+                {
+                    connection.Open();
+                    object result = command.ExecuteScalar();
+                    if (result != null)
+                    {
+                        details = result.ToString();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Error retrieving trade details: " + ex.Message);
+                }
+            }
+        }
+
+        return details;
+    }
+
+    public void UpdateTradeDetails(int tradeId, string newDetails)
+    {
+        using (OracleConnection connection = new OracleConnection(_connectionString))
+        {
+            string sql = "UPDATE TradeDetails SET Details = :newDetails WHERE TradeId = :tradeId";
+
+            using (OracleCommand command = new OracleCommand(sql, connection))
+            {
+                command.Parameters.Add(":newDetails", OracleType.VarChar).Value = newDetails;
+                command.Parameters.Add(":tradeId", OracleType.Int32).Value = tradeId;
+
+                try
+                {
+                    connection.Open();
+                    int rowsAffected = command.ExecuteNonQuery();
+                    Console.WriteLine($"{rowsAffected} trade details updated.");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Error updating trade details: " + ex.Message);
+                }
+            }
+        }
+    }
+
+    public void DeleteTradeDetails(int tradeId)
+    {
+        using (OracleConnection connection = new OracleConnection(_connectionString))
+        {
+            string sql = "DELETE FROM TradeDetails WHERE TradeId = :tradeId";
+
+            using (OracleCommand command = new OracleCommand(sql, connection))
+            {
+                command.Parameters.Add(":tradeId", OracleType.Int32).Value = tradeId;
+
+                try
+                {
+                    connection.Open();
+                    int rowsAffected = command.ExecuteNonQuery();
+                    Console.WriteLine($"{rowsAffected} trade details deleted.");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Error deleting trade details: " + ex.Message);
+                }
+            }
+        }
+    }
+}
